@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'add_update_todo.dart';
+
 
 void main() {
   runApp(MyApp());
@@ -10,59 +12,110 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Todo List',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: TodoListPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
+class TodoItem {
+  int id;
+  String title;
+  String description;
+  bool completed;
+
+  TodoItem({
+    required this.id,
+    required this.title,
+    this.description = '',
+    this.completed = false,
+  });
+
+  factory TodoItem.fromJson(Map<String, dynamic> json) {
+    return TodoItem(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'] ?? '',
+      completed: json['completed'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'completed': completed,
+    };
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  String _response = '';
+class TodoListPage extends StatefulWidget {
+  @override
+  _TodoListPageState createState() => _TodoListPageState();
+}
 
-  Future<void> fetchData() async {
-    try {
-      final response = await http.get(Uri.parse('http://127.0.0.1:8000/'));
-      if (response.statusCode == 200) {
-        setState(() {
-          _response = json.decode(response.body)['Hello'];
-        });
-      } else {
-        setState(() {
-          _response = 'Failed to load data: ${response.statusCode}';
-        });
-      }
-    } catch (e) {
+class _TodoListPageState extends State<TodoListPage> {
+  List<TodoItem> _todoItems = [];
+  
+  Future<void> fetchTodos() async {
+    final response = await http.get(Uri.parse('http://127.0.0.1:8000/todos/'));
+    if (response.statusCode == 200) {
+      final List<dynamic> todoJson = json.decode(response.body);
       setState(() {
-       _response = 'An error occurred: $e';
+        _todoItems = todoJson.map((json) => TodoItem.fromJson(json)).toList();
+      });
+    } else {
+      setState(() {
+        _todoItems = [];
       });
     }
+  }
+  
+  @override
+  void initState() {
+    super.initState();
+    fetchTodos();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Flutter Demo Home Page'),
+        title: Text('Todo List'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Response from FastAPI: $_response'),
-            ElevatedButton(
-              onPressed: fetchData,
-              child: Text('Fetch Data'),
+      body: ListView.builder(
+        itemCount: _todoItems.length,
+        itemBuilder: (context, index) {
+          final item = _todoItems[index];
+          return ListTile(
+            title: Text(item.title),
+            subtitle: Text(item.description),
+            trailing: Checkbox(
+              value: item.completed,
+              onChanged: (bool? value) {
+                setState(() {
+                  item.completed = value ?? false;
+                });
+              },
             ),
-          ],
-        ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => AddUpdateTodoPage()),
+          );
+          if (result == true) {
+            fetchTodos();
+          }
+        },
+        child: Icon(Icons.add),
       ),
     );
   }
