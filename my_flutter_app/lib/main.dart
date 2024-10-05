@@ -62,7 +62,7 @@ class _TodoListPageState extends State<TodoListPage> {
   List<TodoItem> _todoItems = [];
   
   Future<void> fetchTodos() async {
-    final response = await http.get(Uri.parse('http://127.0.0.1:8000/todos/'));
+    final response = await http.get(Uri.parse('https://gnrsmy5p9i.execute-api.us-east-2.amazonaws.com/dev'));
     if (response.statusCode == 200) {
       final List<dynamic> todoJson = json.decode(response.body);
       setState(() {
